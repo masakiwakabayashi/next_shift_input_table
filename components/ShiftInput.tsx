@@ -21,40 +21,40 @@ const ShiftInput = (props: any) => {
     // テーブル本体を構成する多次元配列を格納するためのuseState
     const [shiftTableData, setShiftTableData] = useState<any[][]>([]);
     // シフトの初期値を反映するための処理
-    const [ teacherShiftDefaultData, setTeacherShiftDefaultData ] = useState<any>([]);
+    const [ shiftDefaultData, setShiftDefaultData ] = useState<any>([]);
 
 
     // 日付の配列を作成する (すでに登録されているシフトデータを反映するために使う)
     const getClassDateRangeArrayForDefault = async () => {
-        const classDateRangeRef = collection(db, 'date');
-        const querySnapshot = await getDocs(classDateRangeRef);
-        const docsClassDateData = querySnapshot.docs.map((doc)=>{
+        const dateRef = collection(db, 'date');
+        const querySnapshot = await getDocs(dateRef);
+        const docsDateData = querySnapshot.docs.map((doc)=>{
             return doc.id;
         });
-        return docsClassDateData;
+        return docsDateData;
     }
 
     // すでに登録されているシフトデータを反映するための2次元配列を作成する関数
-    const createShiftDefaultDataMatrix = async (teacherData: any) =>{
-        const teacherShiftData: any = [];
-        if (teacherData && teacherData.shift) {
+    const createShiftDefaultDataMatrix = async (staffData: any) =>{
+        const shiftData: any = [];
+        if (staffData && staffData.shift) {
             // シフトを構成するデータを取得する (Firestoreから取得したシフトデータの座標を調べるため)
             const classDateRangeArray = await getClassDateRangeArrayForDefault();
-            const classTimeArray = await getClassTimeArray();
+            const classTimeArray = await getTimeArray();
             // awaitを使うためにfor文を使ってループさせる
-            for (const value of Object.values<any>(teacherData.shift)) {
+            for (const value of Object.values<any>(staffData.shift)) {
                 // リファレンスからドキュメントのデータを取得
-                const classTimeRef = doc(db, 'time', value.class_time.id);
-                const classTimeDoc = await getDoc(classTimeRef);
-                const classTimeData = classTimeDoc.data();
+                const timeRef = doc(db, 'time', value.time.id);
+                const timeDoc = await getDoc(timeRef);
+                const timeData = timeDoc.data();
                 // 時限と講習期間がシフトを構成する配列の何番目なのかを取得
-                const classDateRangeIndex = classDateRangeArray.indexOf(value.class_date_range.id) + 1;
-                const classTimeIndex = classTimeArray.indexOf(classTimeData?.name) + 1;
+                const dateIndex = classDateRangeArray.indexOf(value.date.id) + 1;
+                const timeIndex = classTimeArray.indexOf(timeData?.name) + 1;
                 // シフト表を構成するデータを2次元配列に追加
-                teacherShiftData.push([classDateRangeIndex, classTimeIndex]);
+                shiftData.push([dateIndex, timeIndex]);
             }
         }
-        return teacherShiftData;
+        return shiftData;
     }
 
     // すでに登録されているシフト情報の取得
@@ -66,7 +66,7 @@ const ShiftInput = (props: any) => {
         // 取得したデータからシフトデータを反映するための2次元配列を作成する
         const defaultShiftData = await createShiftDefaultDataMatrix(staffData);
         // シフトデータをuseStateにセット
-        setTeacherShiftDefaultData(defaultShiftData);
+        setShiftDefaultData(defaultShiftData);
     }
 
     // すでに登録されているシフト情報の取得を実行
@@ -80,21 +80,21 @@ const ShiftInput = (props: any) => {
         if (hotRef.current) {
         const hot = hotRef.current.hotInstance;
         if (hot == null) return;
-        teacherShiftDefaultData.map(([x,y]: [number, number])=>{
+        shiftDefaultData.map(([x,y]: [number, number])=>{
             hot.setDataAtCell(x, y, "-");
             hot.setCellMeta(x, y, 'className', 'bg-change-2');
         });
         }
-    },[teacherShiftDefaultData]);
+    },[shiftDefaultData]);
 
 
     // 日付の配列を作成する (シフト表本体の配列を作成するために使う)
-    const getClassDateRangeArray = async () => {
+    const getDateArray = async () => {
         // Firestoreからdateコレクションのドキュメントを取得する
-        const classDateRangeRef = collection(db, 'date');
-        const querySnapshot = await getDocs(classDateRangeRef);
+        const dateRef = collection(db, 'date');
+        const querySnapshot = await getDocs(dateRef);
         // dateコレクションのドキュメントIDが日付になっているため、形式を変更して配列に格納する
-        const docsClassDateData = querySnapshot.docs.map((doc: any) => {
+        const docsDateData = querySnapshot.docs.map((doc: any) => {
             // 日付から曜日を取得する
             const date = new Date(doc.id);
             const dayOfWeek = date.getDay();
@@ -104,23 +104,23 @@ const ShiftInput = (props: any) => {
             // 日付と曜日を結合して返す
             return formattedDate + ' (' + dayOfWeekString + ')';
         });
-        return docsClassDateData;
+        return docsDateData;
     };
 
-    // 時間帯の配列を作成する (シフト表本体の2次元配列を作成するために使う)
-    const getClassTimeArray = async () => {
+    // 時間帯の配列を作成する (シフト表本体の配列を作成するために使う)
+    const getTimeArray = async () => {
         // Firestoreからtimeコレクションのドキュメントを取得する
-        const classDateRangeRef = collection(db, 'time');
-        const classTimeQuerySnapshot = await getDocs(classDateRangeRef);
+        const timeRef = collection(db, 'time');
+        const timeQuerySnapshot = await getDocs(timeRef);
         // timeコレクションのドキュメントのnameフィールドの値を配列に格納する
-        const classTimeDocsData = classTimeQuerySnapshot.docs.map((doc: any) => {
+        const timeDocsData = timeQuerySnapshot.docs.map((doc: any) => {
             return doc.data().name;
         });
         // その配列をリターンする
-        return classTimeDocsData;
+        return timeDocsData;
     }
 
-    // 2つの配列の値を行と列にして2次元配列を作成するための関数
+    // 2つの配列の値を行と列にして多次元配列を作成するための関数
     const createMatrix = (arrayA: any, arrayB: any) => {
         const numRows = arrayA.length + 1;
         const numCols = arrayB.length + 1;
@@ -140,11 +140,11 @@ const ShiftInput = (props: any) => {
         return result;
     };
 
-    // 1列目が日付で1行目が時間帯なっている2次元配列を作成する
+    // 1列目が日付で1行目が時間帯なっている多次元配列を作成する
     const createDataArray = async () => {
-        const classDateRangeArray = await getClassDateRangeArray();
-        const classTimeArray = await getClassTimeArray();
-        const matrix = createMatrix(classDateRangeArray, classTimeArray);
+        const dateArray = await getDateArray();
+        const timeArray = await getTimeArray();
+        const matrix = createMatrix(dateArray, timeArray);
         setShiftTableData(matrix as any);
     }
 
@@ -198,50 +198,49 @@ const ShiftInput = (props: any) => {
 
     // 日付のリファレンスの配列を作成する (Firestoreに講師のシフト情報を保存するときに使う)
     const getClassDateRangeRefArray = async () => {
-        const classDateRangeRef = collection(db, 'date');
-        const querySnapshot = await getDocs(classDateRangeRef);
-        const docsClassDateData = querySnapshot.docs.map((doc: any) => {
+        const dateRangeRef = collection(db, 'date');
+        const querySnapshot = await getDocs(dateRangeRef);
+        const docsDateData = querySnapshot.docs.map((doc: any) => {
             return doc.ref.path;
         });
-        return docsClassDateData;
+        return docsDateData;
     }
 
 
     // 時間帯のリファレンスの配列を作成する (Firestoreに講師のシフト情報を保存するときに使う)
     const getClassTimeRefArray = async () => {
-        const classTimeRef = collection(db, 'time');
-        const classTimeQuerySnapshot = await getDocs(classTimeRef);
-        const classTimeDocsData = classTimeQuerySnapshot.docs.map((doc: any) => {
+        const timeRef = collection(db, 'time');
+        const timeQuerySnapshot = await getDocs(timeRef);
+        const timeDocsData = timeQuerySnapshot.docs.map((doc: any) => {
             return doc.ref.path;
         });
-        return classTimeDocsData;
+        return timeDocsData;
     }
 
     // シフトデータのセル座標を講習期間と時限のリファレンスに変更する
     const convertShiftDataToReferencedFormat = async (
         ShiftArray: any,
-        classDateRangeRefArray: any,
-        classTimeRefArray: any
+        dateRefArray: any,
+        timeRefArray: any
     ) => {
         const referencedFormatShiftArray: any = [];
         ShiftArray.map((doc: any)=>{
             referencedFormatShiftArray.push({
                 id: `${doc.row as number}_${doc.col as number}`,
-                class_time : classTimeRefArray[doc.col as number - 1],
-                class_date_range : classDateRangeRefArray[doc.row as number - 1],
+                time : timeRefArray[doc.col as number - 1],
+                date : dateRefArray[doc.row as number - 1],
             });
         });
-        console.log(referencedFormatShiftArray);
         return referencedFormatShiftArray;
     }
 
     // シフトデータを登録する前に既存のシフトデータを削除する処理 (これをやらないと選択を解除したシフトが消えない)
     const beforeShiftDataDelete = async (staffId: any) => {
         // ドキュメントがすでに存在するかどうかを判別する
-        const teacherDocRef = doc(db, "staff", staffId);
-        const teacherDocSnap = await getDoc(teacherDocRef);
+        const docRef = doc(db, "staff", staffId);
+        const docSnap = await getDoc(docRef);
         // ドキュメントが存在していた場合はシフトデータを削除する (ドキュメントが存在していない場合にこれをやるとエラーになる)
-        if (teacherDocSnap.exists()) {
+        if (docSnap.exists()) {
             await updateDoc(doc(db, "staff", staffId), {
                 shift : deleteField(),
             });
@@ -249,40 +248,40 @@ const ShiftInput = (props: any) => {
     }
 
     // 実際にシフトデータを登録する処理
-    const storeTeacherShiftData = async (staffId: any, ShiftArray: any) => {
+    const storeShiftData = async (staffId: any, ShiftArray: any) => {
         for (let i = 0; i < ShiftArray.length; i++) {
             // 文字列になっているパスからドキュメントのリファレンスを取得する
-            const classTimeRefPath = ShiftArray[i].class_time;
-            const classDateRangeRefPath = ShiftArray[i].class_date_range;
-            const classTimeRefPathSegments = classTimeRefPath.split('/');
-            const classDateRangeRefPathSegments = classDateRangeRefPath.split('/');
+            const timeRefPath = ShiftArray[i].time;
+            const dateRefPath = ShiftArray[i].date;
+            const timeRefPathSegments = timeRefPath.split('/');
+            const dateRefPathSegments = dateRefPath.split('/');
             // リファレンスのパスからIDを取得して、そのIDからドキュメントのリファレンスを取得する
-            const classTimeRef = doc(db, "time", classTimeRefPathSegments[1]);
-            const classDateRangeRef = doc(db, "date", classDateRangeRefPathSegments[1]);
+            const timeRef = doc(db, "time", timeRefPathSegments[1]);
+            const dateRef = doc(db, "date", dateRefPathSegments[1]);
             // updateDocを使うとfor文の繰り返しごとに1つのフィールドにシフトが上書きされるのでsetDocとmergeオプションを使う
             await setDoc(doc(db, "staff", staffId), {
                 shift : {
                     [ShiftArray[i].id] : {
-                        class_time : classTimeRef,
-                        class_date_range : classDateRangeRef,
+                        time : timeRef,
+                        date : dateRef,
                     },
                 }
             }, { merge: true });
         }
     }
 
-    // Firestoreに講師のシフトを保存するための関数
+    // Firestoreにスタッフのシフトを保存するための関数
     const saveShift = async (ShiftArray: any) => {
-        // 講習期間と時限のリファレンスを配列として取得
-        const classDateRangeRefArray = await getClassDateRangeRefArray();
-        const classTimeRefArray = await getClassTimeRefArray();
-        // セルの座標を講習期間と時限のリファレンスに変更する
+        // 日付と時間帯のリファレンスを配列として取得
+        const dateRefPathArray = await getClassDateRangeRefArray();
+        const timeRefPathArray = await getClassTimeRefArray();
+        // セルの座標を日付と時間帯のリファレンスに変更する
         const referencedFormatShiftArray =
-            await convertShiftDataToReferencedFormat(ShiftArray, classDateRangeRefArray, classTimeRefArray);
-        // 講師のドキュメントが存在していた場合、選択が解除されたセルのシフト情報を削除するために一旦Shiftフィールドを消してから再度登録する
+            await convertShiftDataToReferencedFormat(ShiftArray, dateRefPathArray, timeRefPathArray);
+        // 選択が解除されたセルのシフト情報を削除するために一旦Shiftフィールドを消してから再度登録する
         await beforeShiftDataDelete(modalId);
-        // サブコレクションteachersにリファレンス形式になったシフト情報を保存する
-        await storeTeacherShiftData(modalId, referencedFormatShiftArray).then(()=>{
+        // リファレンス形式になったシフト情報を保存する
+        await storeShiftData(modalId, referencedFormatShiftArray).then(()=>{
             console.log("Document successfully updated!");
         });
     }
@@ -310,7 +309,6 @@ const ShiftInput = (props: any) => {
     };
 
 
-
     return (
         <Box>
             <Box>
@@ -321,7 +319,7 @@ const ShiftInput = (props: any) => {
                 data={shiftTableData}
                 width="auto"
                 colWidths={100}
-                rowHeights={23}
+                rowHeights={10}
                 rowHeaders={false}
                 colHeaders={false}
                 outsideClickDeselects={false}
@@ -334,9 +332,6 @@ const ShiftInput = (props: any) => {
                     if (shiftTableData[row][column] === '-') {
                         cellProperties.className = 'bg-change';
                     }
-
-
-
                     return cellProperties;
                 }}
             />

@@ -80,7 +80,7 @@ const Staff = () => {
             }
             {/* シフト入力のテーブルコンポーネントを開くためのモーダル */}
             <Box>
-                <Modal onClose={onClose} isOpen={isOpen} size={'6xl'}>
+                <Modal onClose={onClose} isOpen={isOpen} size={'xl'}>
                     <ModalOverlay />
                         <ModalContent>
                             <ModalHeader>シフト入力</ModalHeader>
